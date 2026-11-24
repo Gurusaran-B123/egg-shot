@@ -163,7 +163,7 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
 
   void _newGame() {
     _refundArmed();
-    board.fill(math.min(level.rows, maxRows - 5), level.colors, rnd);
+    board.fill(math.min<int>(level.rows, maxRows - 4), level.colors, rnd);
     _held = -1;
     _timeLeft = level.timeLimit.toDouble();
     _shotsLeft = level.shotLimit;
@@ -734,13 +734,32 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
         ),
       ),
     ));
-    final bs = d * 0.8;
+    if (_held >= 0 && phase == 0) {
+      kids.add(Positioned(
+        left: 0,
+        right: 0,
+        top: dangerY - d * 1.0,
+        child: IgnorePointer(
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(color: const Color(0xCC000000), borderRadius: BorderRadius.circular(18)),
+              child: Text(
+                cur == kBomb ? 'BOMB ready - aim and shoot!' : 'SNAKE ready - aim and shoot!',
+                style: fancyText(16, color: const Color(0xFFFFEE58)),
+              ),
+            ),
+          ),
+        ),
+      ));
+    }
+    final bs = d * 0.95;
     for (var k = 0; k < 3; k++) {
       kids.add(Positioned(
         left: w - (3 - k) * (bs + 4) - 4,
         top: shooterY - bs * 0.2,
         width: bs,
-        height: bs + 16,
+        height: bs + 24,
         child: _powerButton(k, bs),
       ));
     }
