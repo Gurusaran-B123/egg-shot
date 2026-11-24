@@ -72,6 +72,14 @@ class Wallet extends ChangeNotifier {
           owned[k] = p.getInt('shot_power_$k') ?? 0;
         }
         _loaded = true;
+        if (!(p.getBool('shot_gift') ?? false)) {
+          // welcome gift: one of each power so you can try them
+          for (var k = 0; k < 3; k++) {
+            owned[k] += 1;
+          }
+          await p.setBool('shot_gift', true);
+          _save();
+        }
       }
     } catch (_) {}
     notifyListeners();
