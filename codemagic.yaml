@@ -15,8 +15,8 @@ workflows:
       - build/app/outputs/flutter-apk/*.apk
 
   # 2) STORE release: signed .aab (Google Play) + signed .apk (other app stores).
-  # Needs a variable group "eggshot_signing" with KEYSTORE_BASE64 and KEYSTORE_PASSWORD
-  # (see store/RELEASE_GUIDE.md).
+  # Needs two Secure environment variables in the Codemagic app (Environment variables tab):
+  # KEYSTORE_BASE64 and KEYSTORE_PASSWORD (alias is eggshot).
   android-release:
     name: Egg Shot STORE RELEASE
     max_build_duration: 40
@@ -29,7 +29,7 @@ workflows:
       - name: Prepare signing key
         script: |
           if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
-            echo "KEYSTORE_BASE64 / KEYSTORE_PASSWORD missing - add the eggshot_signing group"; exit 1
+            echo "KEYSTORE_BASE64 / KEYSTORE_PASSWORD missing - add them in Environment variables"; exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 --decode > "$HOME/release.jks"
           echo "CM_KEYSTORE_PATH=$HOME/release.jks" >> $CM_ENV
