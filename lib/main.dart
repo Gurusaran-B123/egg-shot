@@ -38,6 +38,8 @@ class LevelSelect extends StatefulWidget {
 
 class _LevelSelectState extends State<LevelSelect> {
   ShotProgress _progress = ShotProgress(List<int>.filled(kShotLevels.length, 0));
+  final ScrollController _scroll = ScrollController();
+  bool _jumped = false;
 
   @override
   void initState() {
@@ -48,7 +50,25 @@ class _LevelSelectState extends State<LevelSelect> {
 
   Future<void> _reload() async {
     final p = await ShotProgress.load(kShotLevels.length);
-    if (mounted) setState(() => _progress = p);
+    await Wallet.instance.refresh(kShotLevels.length);
+    if (!mounted) return;
+    setState(() => _progress = p);
+    if (!_jumped) {
+      _jumped = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_scroll.hasClients) return;
+        final cw = (MediaQuery.of(context).size.width - 28 - 24) / 3;
+        final row = _progress.current ~/ 3;
+        final off = (row * (cw / 0.86 + 12)).clamp(0.0, _scroll.position.maxScrollExtent).toDouble();
+        _scroll.jumpTo(off);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
   }
 
   Future<void> _open(int i) async {
@@ -78,8 +98,8 @@ class _LevelSelectState extends State<LevelSelect> {
                 'Drag to aim, let go to shoot.\n'
                 'Match 3 or more eggs of the same colour: they crack open and a baby hatches!\n'
                 'Eggs left hanging fall down for bonus points.\n'
-                'Bomb egg: blasts the eggs around it.\n'
-                'Snake egg: eats a whole colour of eggs.\n'
+                'Spend stars in the shop (cart button) on power shots: Bomb blasts nearby eggs, Snake eats a whole colour, Freeze stops the timer.\n'
+                'Later levels have a timer or a limited number of eggs.\n'
                 'Tap NEXT to swap eggs. Do not let the eggs touch the red line!',
                 textAlign: TextAlign.center,
                 style: fancyText(17, color: const Color(0xFF5D4037)),
@@ -119,12 +139,21 @@ class _LevelSelectState extends State<LevelSelect> {
                     children: [
                       RoundIconButton(icon: Icons.help_outline_rounded, color: const Color(0xFF1E88E5), onTap: _howTo),
                       const Spacer(),
-                      HudChip(
-                        text: '${_progress.total} / ${kShotLevels.length * 3}',
-                        icon: Icons.star_rounded,
-                        color: const Color(0xFFFFD54F),
+                      ListenableBuilder(
+                        listenable: Wallet.instance,
+                        builder: (context, _) => HudChip(
+                          text: '${Wallet.instance.balance}',
+                          icon: Icons.star_rounded,
+                          color: const Color(0xFFFFD54F),
+                        ),
                       ),
                       const Spacer(),
+                      RoundIconButton(
+                        icon: Icons.shopping_cart_rounded,
+                        color: const Color(0xFF43A047),
+                        onTap: () => showDialog<void>(context: context, builder: (_) => const ShopDialog()),
+                      ),
+                      const SizedBox(width: 8),
                       RoundIconButton(
                         icon: Icons.settings_rounded,
                         color: const Color(0xFF7E57C2),
@@ -139,6 +168,7 @@ class _LevelSelectState extends State<LevelSelect> {
                 const SizedBox(height: 10),
                 Expanded(
                   child: GridView.builder(
+                    controller: _scroll,
                     padding: const EdgeInsets.fromLTRB(14, 6, 14, 20),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 3,
@@ -185,8 +215,16 @@ class _LevelSelectState extends State<LevelSelect> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text('${lv.number}', style: fancyText(40)),
+                  if (open && (lv.timeLimit > 0 || lv.shotLimit > 0))
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (lv.timeLimit > 0) const Icon(Icons.timer_rounded, color: Colors.white, size: 16),
+                        if (lv.shotLimit > 0) const Icon(Icons.egg_rounded, color: Colors.white, size: 16),
+                      ],
+                    ),
                   SizedBox(
-                    height: 44,
+                    height: 40,
                     child: open
                         ? Image.asset('assets/images/animal_${lv.theme.baby}.png',
                             errorBuilder: (c, e, s) => const SizedBox())
