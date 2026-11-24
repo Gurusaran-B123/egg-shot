@@ -114,6 +114,10 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
   int _shotCode = 0;
   int score = 0, babies = 0, shots = 0, misses = 0, combo = 0;
   int _earned = 0;
+  int _held = -1; // regular egg put aside while a power shot is armed
+  double _timeLeft = 0, _frozen = 0;
+  int _shotsLeft = 0;
+  String _loseMsg = '';
 
   // effects
   final List<_Shell> _shells = [];
@@ -128,11 +132,15 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
     super.initState();
     _ticker = createTicker(_tick)..start();
     SoundManager.instance.playMusic(theme.bgm);
+    Wallet.instance.refresh(kLevelCount).then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
     _endTimer?.cancel();
+    _refundArmed();
     _ticker.dispose();
     frame.dispose();
     SoundManager.instance.playMusic('bgm_farm');
@@ -154,7 +162,13 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
   }
 
   void _newGame() {
-    board.fill(level.rows, level.colors, rnd);
+    _refundArmed();
+    board.fill(math.min(level.rows, maxRows - 5), level.colors, rnd);
+    _held = -1;
+    _timeLeft = level.timeLimit.toDouble();
+    _shotsLeft = level.shotLimit;
+    _frozen = 0;
+    _loseMsg = '';
     cur = 0;
     next = 0;
     score = 0;
@@ -176,22 +190,70 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
     next = _pick();
   }
 
-  bool _isSpecial(int c) => c >= 100;
-
   int _pick() {
     final present = board.colorsOnBoard().toList();
     if (present.isEmpty) return 0;
-    final hasSpecial = _isSpecial(cur) || _isSpecial(next);
-    if (!hasSpecial && shots >= 3) {
-      if (level.bombs && rnd.nextDouble() < 0.08) return kBomb;
-      if (level.snakes && rnd.nextDouble() < 0.06) return kSnake;
-    }
     return present[rnd.nextInt(present.length)];
+  }
+
+  /// Give back an armed (unused) power shot.
+  void _refundArmed() {
+    if (_held >= 0 && cur >= 100) {
+      Wallet.instance.give(cur == kBomb ? 0 : 1);
+      cur = _held;
+      _held = -1;
+    }
+  }
+
+  void _power(int k) {
+    if (phase != 0 || _flying) return;
+    final w = Wallet.instance;
+    SoundManager.instance.play('click', volume: 0.6);
+    if (k == 2) {
+      if (_frozen > 0) return;
+      if (w.owned[2] > 0 || w.buy(2)) {
+        w.take(2);
+        _frozen = 10;
+        SoundManager.instance.play('star');
+        setState(() {});
+      } else {
+        _needStars(k);
+      }
+      return;
+    }
+    final code = k == 0 ? kBomb : kSnake;
+    if (cur == code && _held >= 0) {
+      _refundArmed(); // tap again to put it back
+      setState(() {});
+      return;
+    }
+    if (w.owned[k] <= 0 && !w.buy(k)) {
+      _needStars(k);
+      return;
+    }
+    _refundArmed();
+    w.take(k);
+    _held = cur;
+    cur = code;
+    setState(() {});
+  }
+
+  void _needStars(int k) {
+    SoundManager.instance.play('wrong', volume: 0.4);
+    final m = ScaffoldMessenger.of(context);
+    m.clearSnackBars();
+    m.showSnackBar(SnackBar(
+      duration: const Duration(seconds: 2),
+      content: Text('${Wallet.names[k]} costs ${Wallet.costs[k]} stars. Finish levels to earn stars!'),
+    ));
   }
 
   void _validate() {
     final present = board.colorsOnBoard();
     if (present.isEmpty) return;
+    if (_held >= 0 && _held < 100 && !present.contains(_held)) {
+      _held = present.elementAt(rnd.nextInt(present.length));
+    }
     if (cur < 100 && !present.contains(cur)) {
       cur = present.elementAt(rnd.nextInt(present.length));
     }
@@ -216,10 +278,16 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
 
   void _fire() {
     if (phase != 0 || _flying) return;
+    if (level.shotLimit > 0 && _shotsLeft <= 0 && cur < 100) return;
     _flying = true;
     _shotCode = cur;
-    cur = next;
-    next = _pick();
+    if (_held >= 0) {
+      cur = _held;
+      _held = -1;
+    } else {
+      cur = next;
+      next = _pick();
+    }
     _pos = Offset(w / 2, shooterY);
     _dir = Offset(math.cos(_aim), -math.sin(_aim));
     SoundManager.instance.play('click', volume: 0.6);
@@ -227,7 +295,7 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
   }
 
   void _swap() {
-    if (phase != 0 || _flying) return;
+    if (phase != 0 || _flying || _held >= 0) return;
     final t = cur;
     cur = next;
     next = t;
@@ -241,6 +309,17 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
     _last = e;
     if (dt <= 0) return;
     if (dt > 0.034) dt = 0.034;
+    if (phase == 0) {
+      if (_frozen > 0) {
+        _frozen = math.max(0, _frozen - dt);
+      } else if (level.timeLimit > 0) {
+        _timeLeft -= dt;
+        if (_timeLeft <= 0) {
+          _timeLeft = 0;
+          _lose('Time is up!');
+        }
+      }
+    }
     if (_flying && phase == 0) _moveShot(dt);
     _updateFx(dt);
     frame.value++;
@@ -322,6 +401,7 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
       return;
     }
     shots++;
+    if (code < 100 && level.shotLimit > 0) _shotsLeft--;
     if (code == kBomb) {
       _explode(k);
     } else if (code == kSnake) {
@@ -446,10 +526,10 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
 
   void _afterResolve(bool popped) {
     if (!popped) {
-      misses++;
       combo = 0;
+      if (_frozen <= 0) misses++;
       SoundManager.instance.play('wrong', volume: 0.3);
-      if (misses >= level.missLimit) {
+      if (_frozen <= 0 && misses >= level.missLimit) {
         misses = 0;
         var cols = board.colorsOnBoard().toList();
         if (cols.isEmpty) cols = List<int>.generate(level.colors, (i) => i);
@@ -466,7 +546,11 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
       return;
     }
     if (board.maxFilledRow() >= maxRows) {
-      _lose();
+      _lose('The eggs reached the line.');
+      return;
+    }
+    if (level.shotLimit > 0 && _shotsLeft <= 0 && _held < 0) {
+      _lose('You ran out of eggs!');
       return;
     }
     _validate();
@@ -476,7 +560,8 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
   void _win() {
     phase = 2;
     _earned = level.starsFor(shots);
-    ShotProgress.saveStars(widget.levelIndex, _earned);
+    ShotProgress.saveStars(widget.levelIndex, _earned)
+        .then((_) => Wallet.instance.refresh(kLevelCount));
     SoundManager.instance.play('win');
     _endTimer = Timer(const Duration(milliseconds: 1100), () {
       if (mounted) setState(() => _showEnd = true);
@@ -484,8 +569,9 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
     setState(() {});
   }
 
-  void _lose() {
+  void _lose(String why) {
     phase = 3;
+    _loseMsg = why;
     SoundManager.instance.play('lose');
     _endTimer = Timer(const Duration(milliseconds: 900), () {
       if (mounted) setState(() => _showEnd = true);
@@ -576,6 +662,10 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
                         child!,
                         CustomPaint(painter: _FxPainter(this, frame), size: Size.infinite),
                         ..._fxWidgets(),
+                        if (_frozen > 0)
+                          const Positioned.fill(
+                            child: IgnorePointer(child: ColoredBox(color: Color(0x2229B6F6))),
+                          ),
                       ],
                     ),
                   );
@@ -644,7 +734,53 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
         ),
       ),
     ));
+    final bs = d * 0.8;
+    for (var k = 0; k < 3; k++) {
+      kids.add(Positioned(
+        left: w - (3 - k) * (bs + 4) - 4,
+        top: shooterY - bs * 0.2,
+        width: bs,
+        height: bs + 16,
+        child: _powerButton(k, bs),
+      ));
+    }
     return Stack(fit: StackFit.expand, children: kids);
+  }
+
+  Widget _powerButton(int k, double bs) {
+    final w0 = Wallet.instance;
+    final armed = (k == 0 && cur == kBomb && _held >= 0) || (k == 1 && cur == kSnake && _held >= 0);
+    final active = k == 2 && _frozen > 0;
+    final cols = [const Color(0xFFEF5350), const Color(0xFF66BB6A), const Color(0xFF29B6F6)];
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _power(k),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: bs,
+            height: bs,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xAA000000),
+              border: Border.all(color: (armed || active) ? const Color(0xFFFFEE58) : cols[k], width: 3),
+            ),
+            child: k == 2
+                ? Icon(Icons.ac_unit_rounded, color: cols[2], size: bs * 0.62)
+                : Padding(
+                    padding: EdgeInsets.all(bs * 0.12),
+                    child: Image.asset('assets/images/egg_${k == 0 ? 'bomb' : 'snake'}.png',
+                        errorBuilder: (c, e, s) => const SizedBox()),
+                  ),
+          ),
+          Text(
+            w0.owned[k] > 0 ? 'x${w0.owned[k]}' : '${Wallet.costs[k]}★',
+            style: fancyText(13, color: w0.owned[k] > 0 ? Colors.white : const Color(0xFFFFEE58)),
+          ),
+        ],
+      ),
+    );
   }
 
   List<Widget> _fxWidgets() {
@@ -759,7 +895,32 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
               const SizedBox(width: 6),
               Expanded(child: HudChip(text: '$babies', icon: Icons.pets_rounded, color: const Color(0xFFFF8A80))),
               const SizedBox(width: 6),
-              Expanded(child: HudChip(text: '$shots', icon: Icons.gps_fixed_rounded, color: const Color(0xFF80D8FF))),
+              Expanded(
+                child: HudChip(
+                  text: level.shotLimit > 0 ? '$_shotsLeft left' : '$shots',
+                  icon: Icons.gps_fixed_rounded,
+                  color: (level.shotLimit > 0 && _shotsLeft <= 3) ? const Color(0xFFFF8A80) : const Color(0xFF80D8FF),
+                ),
+              ),
+              if (level.timeLimit > 0) ...[
+                const SizedBox(width: 6),
+                Expanded(
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: frame,
+                    builder: (context, _, __) {
+                      final t = _timeLeft.ceil();
+                      final txt = '${t ~/ 60}:${(t % 60).toString().padLeft(2, '0')}';
+                      return HudChip(
+                        text: txt,
+                        icon: _frozen > 0 ? Icons.ac_unit_rounded : Icons.timer_rounded,
+                        color: _frozen > 0
+                            ? const Color(0xFF80D8FF)
+                            : (t <= 10 ? const Color(0xFFFF5252) : Colors.white),
+                      );
+                    },
+                  ),
+                ),
+              ],
               const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -830,7 +991,7 @@ class _ShotScreenState extends State<ShotScreen> with SingleTickerProviderStateM
     return ShotOverlay(
       title: 'Oh no!',
       titleColor: const Color(0xFFE53935),
-      subtitle: 'The eggs reached the line.\nScore $score  ·  Babies hatched $babies',
+      subtitle: '$_loseMsg\nScore $score  ·  Babies hatched $babies',
       children: [
         ChunkyButton(label: 'Try Again', icon: Icons.refresh_rounded, color: const Color(0xFF43A047), onTap: _restart),
         ChunkyButton(label: 'Levels', icon: Icons.grid_view_rounded, color: const Color(0xFF1E88E5), onTap: () => Navigator.of(context).pop()),
