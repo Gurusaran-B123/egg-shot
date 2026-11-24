@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../utils/progress_store.dart';
 import '../utils/sound_manager.dart';
 import 'ui_bits.dart';
 
@@ -14,7 +17,8 @@ class SettingsDialog extends StatelessWidget {
       elevation: 0,
       child: ListenableBuilder(
         listenable: sm,
-        builder: (context, _) => Panel(
+        builder: (context, _) => SingleChildScrollView(
+          child: Panel(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -32,6 +36,7 @@ class SettingsDialog extends StatelessWidget {
                 sm.musicOn,
                 (v) => sm.setMusicOn(v),
               ),
+              _about(context),
               const SizedBox(height: 14),
               ChunkyButton(
                 label: 'Done',
@@ -41,6 +46,59 @@ class SettingsDialog extends StatelessWidget {
               ),
             ],
           ),
+        ),
+        ),
+      ),
+    );
+  }
+
+  static Future<void> _openSite(BuildContext context) async {
+    const url = 'https://deplo-apps.vercel.app/';
+    var ok = false;
+    try {
+      ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    if (!ok) {
+      await Clipboard.setData(const ClipboardData(text: url));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Link copied: https://deplo-apps.vercel.app/')),
+        );
+      }
+    }
+  }
+
+  /// Dropdown: developer credit, rights and feedback link.
+  Widget _about(BuildContext context) {
+    final brown = fancyText(17, color: const Color(0xFF5D4037));
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22)),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: const Icon(Icons.info_rounded, color: Color(0xFFEF6C00), size: 30),
+          title: Text('About & Feedback', style: fancyText(20, color: const Color(0xFF5D4037))),
+          iconColor: const Color(0xFFEF6C00),
+          collapsedIconColor: const Color(0xFFEF6C00),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          children: [
+            Text('Egg Shot', style: fancyText(22, color: const Color(0xFFEF6C00))),
+            const SizedBox(height: 6),
+            Text('Developed and all rights reserved by', textAlign: TextAlign.center, style: brown),
+            Text('Mr. GURUSARAN B', textAlign: TextAlign.center, style: fancyText(21, color: const Color(0xFF3E2723))),
+            const SizedBox(height: 6),
+            Text('A Deplofree creation', textAlign: TextAlign.center, style: brown),
+            const SizedBox(height: 12),
+            ChunkyButton(
+              label: 'Feedback / Website',
+              icon: Icons.open_in_new_rounded,
+              color: const Color(0xFF1E88E5),
+              fontSize: 18,
+              onTap: () => _openSite(context),
+            ),
+          ],
         ),
       ),
     );
@@ -116,6 +174,110 @@ class ShotOverlay extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+/// Shop: spend stars on power shots and freeze.
+class ShopDialog extends StatelessWidget {
+  const ShopDialog({super.key});
+
+  static const _icons = ['egg_bomb', 'egg_snake', ''];
+
+  @override
+  Widget build(BuildContext context) {
+    final w = Wallet.instance;
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: ListenableBuilder(
+        listenable: w,
+        builder: (context, _) => SingleChildScrollView(
+          child: Panel(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Power Shop', style: fancyText(32, color: const Color(0xFFEF6C00))),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 30),
+                    const SizedBox(width: 4),
+                    Text('${w.balance} stars', style: fancyText(24, color: const Color(0xFF5D4037))),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                for (var k = 0; k < 3; k++) _item(context, w, k),
+                const SizedBox(height: 8),
+                Text('Earn stars by finishing levels.', style: fancyText(15, color: const Color(0xFF8D6E63))),
+                const SizedBox(height: 10),
+                ChunkyButton(
+                  label: 'Close',
+                  icon: Icons.check_rounded,
+                  color: const Color(0xFF43A047),
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _item(BuildContext context, Wallet w, int k) {
+    final can = w.balance >= Wallet.costs[k];
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 44,
+            height: 48,
+            child: k == 2
+                ? const Icon(Icons.ac_unit_rounded, color: Color(0xFF29B6F6), size: 40)
+                : Image.asset('assets/images/${_icons[k]}.png',
+                    errorBuilder: (c, e, s) => const Icon(Icons.circle, size: 36)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${Wallet.names[k]}  x${w.owned[k]}', style: fancyText(20, color: const Color(0xFF3E2723))),
+                Text(Wallet.info[k], style: fancyText(13, color: const Color(0xFF8D6E63))),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              if (w.buy(k)) {
+                SoundManager.instance.play('star');
+              } else {
+                SoundManager.instance.play('wrong', volume: 0.4);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: can ? const Color(0xFF43A047) : Colors.grey,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('${Wallet.costs[k]}', style: fancyText(20)),
+                  const Icon(Icons.star_rounded, color: Color(0xFFFFEE58), size: 22),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
