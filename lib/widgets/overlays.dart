@@ -15,6 +15,7 @@ class SettingsDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
       child: ListenableBuilder(
         listenable: sm,
         builder: (context, _) => SingleChildScrollView(
@@ -22,8 +23,8 @@ class SettingsDialog extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Settings', style: fancyText(32, color: const Color(0xFFEF6C00))),
-              const SizedBox(height: 14),
+              Text('Settings', style: fancyText(26, color: const Color(0xFFEF6C00))),
+              const SizedBox(height: 8),
               _row(
                 sm.muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
                 sm.muted ? 'Sound: Muted' : 'Sound: On',
@@ -40,6 +41,7 @@ class SettingsDialog extends StatelessWidget {
               const SizedBox(height: 14),
               ChunkyButton(
                 label: 'Done',
+                fontSize: 17,
                 icon: Icons.check_rounded,
                 color: const Color(0xFF43A047),
                 onTap: () => Navigator.of(context).pop(),
@@ -70,24 +72,25 @@ class SettingsDialog extends StatelessWidget {
 
   /// Dropdown: developer credit, rights and feedback link.
   Widget _about(BuildContext context) {
-    final brown = fancyText(17, color: const Color(0xFF5D4037));
+    final brown = fancyText(14, color: const Color(0xFF5D4037));
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22)),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
       clipBehavior: Clip.antiAlias,
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          leading: const Icon(Icons.info_rounded, color: Color(0xFFEF6C00), size: 30),
-          title: Text('About & Feedback', style: fancyText(20, color: const Color(0xFF5D4037))),
+          dense: true,
+          leading: const Icon(Icons.info_rounded, color: Color(0xFFEF6C00), size: 24),
+          title: Text('About & Feedback', maxLines: 1, overflow: TextOverflow.ellipsis, style: fancyText(16, color: const Color(0xFF5D4037))),
           iconColor: const Color(0xFFEF6C00),
           collapsedIconColor: const Color(0xFFEF6C00),
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           children: [
-            Text('Egg Shot', style: fancyText(22, color: const Color(0xFFEF6C00))),
+            Text('Egg Shot', style: fancyText(18, color: const Color(0xFFEF6C00))),
             const SizedBox(height: 6),
             Text('Developed and all rights reserved by', textAlign: TextAlign.center, style: brown),
-            Text('Mr. GURUSARAN B', textAlign: TextAlign.center, style: fancyText(21, color: const Color(0xFF3E2723))),
+            Text('Mr. GURUSARAN B', textAlign: TextAlign.center, style: fancyText(16, color: const Color(0xFF3E2723))),
             const SizedBox(height: 6),
             Text('A Deplofree creation', textAlign: TextAlign.center, style: brown),
             const SizedBox(height: 12),
@@ -95,7 +98,7 @@ class SettingsDialog extends StatelessWidget {
               label: 'Feedback / Website',
               icon: Icons.open_in_new_rounded,
               color: const Color(0xFF1E88E5),
-              fontSize: 18,
+              fontSize: 15,
               onTap: () => _openSite(context),
             ),
           ],
@@ -106,15 +109,23 @@ class SettingsDialog extends StatelessWidget {
 
   Widget _row(IconData icon, String label, bool value, ValueChanged<bool> onChanged) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22)),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFFEF6C00), size: 30),
-          const SizedBox(width: 12),
-          Expanded(child: Text(label, style: fancyText(20, color: const Color(0xFF5D4037)))),
-          Switch(value: value, onChanged: onChanged, activeColor: const Color(0xFF43A047)),
+          Icon(icon, color: const Color(0xFFEF6C00), size: 24),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: fancyText(16, color: const Color(0xFF5D4037))),
+          ),
+          Transform.scale(
+            scale: 0.85,
+            child: Switch(value: value, onChanged: onChanged, activeColor: const Color(0xFF43A047)),
+          ),
         ],
       ),
     );
@@ -192,6 +203,7 @@ class ShopDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
       child: ListenableBuilder(
         listenable: w,
         builder: (context, _) => SingleChildScrollView(
@@ -199,23 +211,24 @@ class ShopDialog extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Power Shop', style: fancyText(32, color: const Color(0xFFEF6C00))),
+                Text('Power Shop', style: fancyText(26, color: const Color(0xFFEF6C00))),
                 const SizedBox(height: 6),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 30),
+                    const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 24),
                     const SizedBox(width: 4),
-                    Text('${w.balance} stars', style: fancyText(24, color: const Color(0xFF5D4037))),
+                    Text('${w.balance} stars', style: fancyText(18, color: const Color(0xFF5D4037))),
                   ],
                 ),
                 const SizedBox(height: 8),
                 for (var k = 0; k < 3; k++) _item(context, w, k),
                 const SizedBox(height: 8),
-                Text('Earn stars by finishing levels.', style: fancyText(15, color: const Color(0xFF8D6E63))),
-                const SizedBox(height: 10),
+                Text('Earn stars by finishing levels.', style: fancyText(13, color: const Color(0xFF8D6E63))),
+                const SizedBox(height: 8),
                 ChunkyButton(
                   label: 'Close',
+                  fontSize: 17,
                   icon: Icons.check_rounded,
                   color: const Color(0xFF43A047),
                   onTap: () => Navigator.of(context).pop(),
@@ -231,16 +244,16 @@ class ShopDialog extends StatelessWidget {
   Widget _item(BuildContext context, Wallet w, int k) {
     final can = w.balance >= Wallet.costs[k];
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 5),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
       child: Row(
         children: [
           SizedBox(
-            width: 44,
-            height: 48,
+            width: 36,
+            height: 40,
             child: k == 2
-                ? const Icon(Icons.ac_unit_rounded, color: Color(0xFF29B6F6), size: 40)
+                ? const Icon(Icons.ac_unit_rounded, color: Color(0xFF29B6F6), size: 32)
                 : Image.asset('assets/images/${_icons[k]}.png',
                     errorBuilder: (c, e, s) => const Icon(Icons.circle, size: 36)),
           ),
@@ -249,8 +262,8 @@ class ShopDialog extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${Wallet.names[k]}  x${w.owned[k]}', style: fancyText(20, color: const Color(0xFF3E2723))),
-                Text(Wallet.info[k], style: fancyText(13, color: const Color(0xFF8D6E63))),
+                Text('${Wallet.names[k]}  x${w.owned[k]}', style: fancyText(16, color: const Color(0xFF3E2723))),
+                Text(Wallet.info[k], style: fancyText(11, color: const Color(0xFF8D6E63))),
               ],
             ),
           ),
@@ -263,7 +276,7 @@ class ShopDialog extends StatelessWidget {
               }
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
                 color: can ? const Color(0xFF43A047) : Colors.grey,
                 borderRadius: BorderRadius.circular(16),
@@ -271,8 +284,8 @@ class ShopDialog extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('${Wallet.costs[k]}', style: fancyText(20)),
-                  const Icon(Icons.star_rounded, color: Color(0xFFFFEE58), size: 22),
+                  Text('${Wallet.costs[k]}', style: fancyText(16)),
+                  const Icon(Icons.star_rounded, color: Color(0xFFFFEE58), size: 18),
                 ],
               ),
             ),
