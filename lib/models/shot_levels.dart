@@ -72,17 +72,17 @@ const int kLevelCount = 100;
 
 /// 100 levels. Timer starts at level 10, limited eggs at level 15.
 final List<ShotLevel> kShotLevels = List.generate(kLevelCount, (i) {
-  final rows = 5 + math.min(4, i ~/ 20); // 5..9
+  final rows = 5 + math.min<int>(4, i ~/ 20); // 5..9
   final startEggs = rows * 9 - (rows ~/ 2);
   final timer = i >= 9 && i % 3 != 0;
   final limited = i >= 14 && i % 2 == 1;
   return ShotLevel(
     index: i,
     theme: kThemes[(i ~/ 4) % kThemes.length],
-    colors: 3 + math.min(5, i ~/ 12), // 3..8
+    colors: 3 + math.min<int>(5, i ~/ 12), // 3..8
     rows: rows,
-    missLimit: math.max(3, 6 - i ~/ 20),
-    timeLimit: timer ? math.max(75, (startEggs * 2.2).round() - i ~/ 4) : 0,
+    missLimit: math.max<int>(3, 6 - i ~/ 20),
+    timeLimit: timer ? math.max<int>(75, (startEggs * 2.2).round() - i ~/ 4) : 0,
     shotLimit: limited ? (startEggs / 3 * 2.0).ceil() + 6 - i ~/ 25 : 0,
   );
 });
