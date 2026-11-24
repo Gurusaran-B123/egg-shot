@@ -66,7 +66,7 @@ class _ChunkyButtonState extends State<ChunkyButton> {
         duration: const Duration(milliseconds: 90),
         child: Container(
           width: widget.width,
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: 18, vertical: widget.fontSize > 19 ? 12 : 9),
           decoration: BoxDecoration(
             color: widget.color,
             borderRadius: BorderRadius.circular(26),
@@ -192,9 +192,9 @@ class Panel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 360),
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+      constraints: const BoxConstraints(maxWidth: 400),
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 18),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF8E1),
         borderRadius: BorderRadius.circular(34),
