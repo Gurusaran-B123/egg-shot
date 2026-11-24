@@ -17,6 +17,13 @@ def patch_manifest():
     # lock to portrait
     if "screenOrientation" not in text:
         text = text.replace("<activity", '<activity\n            android:screenOrientation="portrait"', 1)
+    # allow the feedback link to open the browser on Android 11+
+    if "<queries>" not in text:
+        text = text.replace(
+            "<application",
+            '<queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW"/>\n            <data android:scheme="https"/>\n        </intent>\n    </queries>\n    <application',
+            1,
+        )
     path.write_text(text, encoding="utf-8")
     print("[ok] AndroidManifest.xml patched")
 
