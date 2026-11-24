@@ -1,27 +1,47 @@
 workflows:
-  android-apk:
-    name: Egg Shot APK
+  # 1) Quick test APK (debug-signed). Install it on your phone to try the game.
+  android-test:
+    name: Egg Shot TEST APK
     max_build_duration: 30
     instance_type: mac_mini_m2
     environment:
       flutter: stable
-      # Optional signing: make a variable group "eggshot_signing" with
-      # KEYSTORE_BASE64 and KEYSTORE_PASSWORD. Delete the next 2 lines for a test (debug-signed) APK.
-      # groups:
-      #   - eggshot_signing
+    scripts:
+      - name: Setup
+        script: bash setup.sh
+      - name: Build test APK
+        script: flutter build apk --release --target-platform android-arm,android-arm64 --build-number=$BUILD_NUMBER
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+
+  # 2) STORE release: signed .aab (Google Play) + signed .apk (other app stores).
+  # Needs a variable group "eggshot_signing" with KEYSTORE_BASE64 and KEYSTORE_PASSWORD
+  # (see store/RELEASE_GUIDE.md).
+  android-release:
+    name: Egg Shot STORE RELEASE
+    max_build_duration: 40
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      groups:
+        - eggshot_signing
     scripts:
       - name: Prepare signing key
         script: |
-          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
-            echo "$KEYSTORE_BASE64" | base64 --decode > "$HOME/release.jks"
-            echo "CM_KEYSTORE_PATH=$HOME/release.jks" >> $CM_ENV
-            echo "CM_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> $CM_ENV
-            echo "CM_KEY_ALIAS=eggshot" >> $CM_ENV
-            echo "CM_KEY_PASSWORD=$KEYSTORE_PASSWORD" >> $CM_ENV
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "KEYSTORE_BASE64 / KEYSTORE_PASSWORD missing - add the eggshot_signing group"; exit 1
           fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$HOME/release.jks"
+          echo "CM_KEYSTORE_PATH=$HOME/release.jks" >> $CM_ENV
+          echo "CM_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> $CM_ENV
+          echo "CM_KEY_ALIAS=eggshot" >> $CM_ENV
+          echo "CM_KEY_PASSWORD=$KEYSTORE_PASSWORD" >> $CM_ENV
       - name: Setup
         script: bash setup.sh
-      - name: Build release APK
-        script: flutter build apk --release --target-platform android-arm,android-arm64
+      - name: Build signed App Bundle (.aab)
+        script: flutter build appbundle --release --build-number=$BUILD_NUMBER
+      - name: Build signed APK
+        script: flutter build apk --release --target-platform android-arm,android-arm64 --build-number=$BUILD_NUMBER
     artifacts:
+      - build/app/outputs/bundle/release/*.aab
       - build/app/outputs/flutter-apk/*.apk
