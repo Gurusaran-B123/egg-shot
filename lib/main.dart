@@ -176,13 +176,38 @@ class _LevelSelectState extends State<LevelSelect> {
                       crossAxisSpacing: 12,
                       childAspectRatio: 0.86,
                     ),
-                    itemCount: kShotLevels.length,
-                    itemBuilder: (context, i) => _card(i),
+                    itemCount: kShotLevels.length + 1,
+                    itemBuilder: (context, i) => i >= kShotLevels.length ? _comingSoon() : _card(i),
                   ),
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _comingSoon() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white, width: 3),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF7E57C2), Color(0xFF3949AB)],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.hourglass_top_rounded, color: Colors.white, size: 34),
+          const SizedBox(height: 6),
+          Text('COMING', style: fancyText(18, color: const Color(0xFFFFEE58))),
+          Text('SOON', style: fancyText(18, color: const Color(0xFFFFEE58))),
+          const SizedBox(height: 4),
+          Text('More levels', style: fancyText(12)),
         ],
       ),
     );
@@ -207,6 +232,7 @@ class _LevelSelectState extends State<LevelSelect> {
             children: [
               Image.asset(
                 'assets/images/${lv.theme.bg}.jpg',
+                cacheWidth: 260,
                 fit: BoxFit.cover,
                 errorBuilder: (c, e, s) => Container(color: lv.theme.accent),
               ),
